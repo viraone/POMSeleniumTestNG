@@ -2,7 +2,6 @@ package org.viradeth.base;
 
 // The WebDrivers and WebDriverWait for the browser control
 // Core selenium classes for browser automation
-
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;

@@ -1,8 +1,13 @@
 package org.viradeth.pages;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Page object model (POM) for the login page
@@ -14,14 +19,25 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class LoginPage {
 
+    private static final Logger logger = LoggerFactory.getLogger(LoginPage.class);
+
     private WebDriver driver;
+
     private WebDriverWait wait;
 
     // Element locators - defined using By strategy for ease of refactoring and readability
+    // Login form input field - stable and unique ID used
     private By usernameField = By.id("username");
+
+    // Password input - Stable ID
     private By passwordField = By.id("password");
+
+    // Login button - only has a class, so we rely on CSS class
     private By loginButton = By.cssSelector("button.radius");
-    private By errorMsg = By.id("flash"); // Used for both success and error messages
+
+    // Feedback banner - stable ID used
+    // Use for both success and error messages
+    private By loginErrorBanner = By.id("flash");
 
     /**
      * Constructor for LoginPage
@@ -38,22 +54,54 @@ public class LoginPage {
     }
 
     /**
-     * Navigates to the browser to the login page URL
-     * This method is typically called in test setup or page chaining
-     * Keeping the URL inside the Page Object allows for central management if endpoints change.
+     * Navigates the browser to the login page url
+     *
+     * This method should be balled at the start of any login related test case or
+     * before performing any interaction with the login page
+     * It ensure the WebDriver is pointing to the correct endpoint before continuing.
+     *
+     * URL is hardcoded here for simplicity, but in production framework it should be
+     * externalized to a configuration file or environment variable.
+     *
+     * Example usage:
+     * <pre>
+     *     LoginPage loginPage = new LoginPage(driver, wait);
+     *     loginPage.goToLoginPage();
+     * </pre>
+     *
+     * Why this matters:
+     * - Centralizes page navigation logic in the POM class
+     * - Reduces duplication of hardcoded URLS in test classes
+     * - Improves maintainability if login endpoint changes
+     * - Clarifies page ownership in multi-page flows
      */
     public void goToLoginPage(){
         driver.get("https://the-internet.herokuapp.com/login");
     }
 
     /**
-     * Fills in the login form and submits it
+     * Logs into the application using the specified username and password.
+     *
+     * This method abstracts the low level details of entering credentials and clicking
+     * the login button. It should be the preferred method for test cases that perform automation
+     * Ensuring consistency and maintainability
+     *
+     * Example usage:
+     * <pre>
+     *     LoginPage loginPage = new LoginPage(driver, wait);
+     *     loginPage.goToLoginPage();
+     *     loginPage.login("tomsmith", "SuperSecretPassword!");
+     * </pre>
      *
      * @param username - the username to enter
      * @param password - the password to enter
      *
-     * Represents a high level user interaction with the page.
-     * Tests should call this instead of interacting with raw elements.
+     * Best practices:
+     * - Always call {@code goToLoginPage()} before invoking this method unless the browser is already on the login page.
+     * - Avoid duplicating low-level field interactions in test classes; use this method instead.
+     *
+     * Known limitations:
+     * - Assumes the login form is present and visible. This method does not validate page readiness; use explicit waits in tests if needed.
      */
     public void login(String username, String password){
         driver.findElement(usernameField).sendKeys(username);
@@ -62,14 +110,35 @@ public class LoginPage {
     }
 
     /**
-     * Checks whether a login message (success or error) is visible
-     * This can be used in assertions to confirm a feedback banner is shown.
+     * Determines whether a login feedback message (either success or error) is currently visible on the page.
+     * This method is typically used in test assertions to verify that the application responded
+     * to a login attempt - either by displaying a successful banner or an error message.
+     *
+     * Example usage:
+     * <pre>
+     *     assertTrue(loginPage.isLoginMessageDisplayed(), "Expected a login message, but none appeared.");
+     * </pre>
+     *
+     * Logging:
+     * - Logs an error with stack track if the message does not appear within the configured wait duration.
+     * - Useful for debugging flaky or timing-sensitive login tests.
+     *
+     * Best practices:
+     * - Call this method after invoking {@code login()} to confirm UI feedback.
+     * - Combine with {@code getLoginMessage()} to validate the message content.
+     *
+     * Known limitations:
+     * - Does not differentiate between success and error banners - only checks visibility.
+     * - Assumes the browser is already on the login page and has submitted a login attempt.
+     *
+     * @return true if a login message banner is visible; false if it times out or fails to appear.
      */
     public boolean isLoginMessageDisplayed(){
         try {
-            wait.until(driver -> driver.findElement(errorMsg).isDisplayed());
+            wait.until(ExpectedConditions.visibilityOfElementLocated(loginErrorBanner));
             return true;
-        } catch (Exception e) {
+        } catch (TimeoutException e) {
+            logger.error("Login message did not appear within wait duration.", e);
             return false;
         }
     }
@@ -77,11 +146,24 @@ public class LoginPage {
     /**
      * Retrieves the text content of the login message banner
      *
-     * Useful for verifying the message is displayed after login attempt
-     * Could be extended in the future to return message type - error / success.
-     * Using regex or styling
+     * @return - The message string shown in the login alert banner
+     * @throws - TimeoutException if the banner does not appear within the wait duration.
+     *
+     * Why this matters:
+     * Ensures login feedback is captured for validation.
+     * Logs message content for debugging in CI environments.
+     * Promotes stability by using explicit wait conditions.
      */
     public String getLoginMessage(){
-        return wait.until(driver -> driver.findElement(errorMsg).getText());
+        try {
+            WebElement messageElement = wait.until(ExpectedConditions.visibilityOfElementLocated(loginErrorBanner));
+            String messageText = messageElement.getText().trim();
+
+            logger.info("Login message appeared: '{}'", messageText);
+            return messageText;
+        } catch (TimeoutException e) {
+            logger.error("Login message banner did not appear within the wait duration.", e);
+            throw e;
+        }
     }
 }

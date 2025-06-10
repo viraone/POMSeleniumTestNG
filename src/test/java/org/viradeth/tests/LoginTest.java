@@ -1,9 +1,11 @@
 package org.viradeth.tests;
 
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.viradeth.base.BaseTest;
 import org.viradeth.pages.LoginPage;
 import static org.testng.Assert.*;
+import static org.viradeth.tests.TestMessages.*;
 
 /**
  * LoginTest contains regression scenarios for authenticating against
@@ -33,42 +35,52 @@ public class LoginTest extends BaseTest {
      * 4. confirm the banner contains the expected success message
      *
      * Why this test matters:
+     * - Serves as a baseline for all login-related behavior
      *
      * Example failure reasons:
      *
      * @Test - is TestNG's annotation it allows descriptive reporting via description.
      */
-    @Test(description = "Should login successfully with valid credentials")
-    public void validLoginTest(){
+    @Test(description = "Valid credentials should login successfully and show success banner")
+    public void isAbleToLoginWithValidCredentials(){
 
-        // Arrange: Create LoginPage instance and navigate to the target login page
+        // Arrange
         LoginPage loginPage = new LoginPage(driver, wait);
         loginPage.goToLoginPage();
 
-        // Act: Perform login using valid test credentials
-        loginPage.login("tomsmith", "SuperSecretPassword!");
-
-        // Assert: Ensure success message is displayed and contact is correct
         assertTrue(
-                loginPage.isLoginMessageDisplayed(),
-                "Expected a login success message, but none appeared."
+                loginPage.isAtLoginPage(),
+                LOGIN_PAGE_LOAD_ERROR
         );
 
+        logger.info("Attempting login with username: [{}], password: [****]", validUserName);
+
+        // Act
+        loginPage.login(validUserName, validPassword);
+
+        // Assert
         assertTrue(
-                loginPage.getLoginMessage().contains("You logged into a secure area!"),
-                "Success message content was incorrect or missing."
+                loginPage.isLoginMessageDisplayed(),
+                LOGIN_SUCCESS_MESSAGE_MISSING
+        );
+
+        String actualMessage = loginPage.getLoginMessage().replace("\n", "").trim();
+        assertTrue(
+                actualMessage.contains(expectedSuccessMessage),
+                LOGIN_SUCCESS_TEXT_INVALID
         );
     }
 
     /**
-     * Negative Path Test: Invalid username with valid password should trigger an error message.
      *
-     * This confirms that the login system does not accept unknown users.
+     * Data provider for negative login test scenarios
+     * @DataProvider(name = "invalidLoginData")
      */
-    @Test(description = "Should show error message for incorrect username")
-    public void invalidUsernameTest(){
 
-    }
+
+
+
+
 
 
 }

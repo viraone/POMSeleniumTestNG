@@ -71,16 +71,4 @@ public class LoginTest extends BaseTest {
         );
     }
 
-    /**
-     *
-     * Data provider for negative login test scenarios
-     * @DataProvider(name = "invalidLoginData")
-     */
-
-
-
-
-
-
-
 }
